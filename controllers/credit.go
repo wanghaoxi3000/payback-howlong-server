@@ -51,13 +51,50 @@ func (o *CreditController) Retrieve() {
 
 	t, err := models.GetCreditById(intid)
 	if err != nil {
-		logs.Warning("GetCredit Id %v error: %v", creditID, err.Error())
+		logs.Warning("Get credit ID %v error: %v", creditID, err.Error())
 		o.Ctx.Output.SetStatus(404)
 		o.Ctx.Output.Body([]byte("Not found"))
 		return
 	}
 
 	o.Data["json"] = t
+	o.ServeJSON()
+}
+
+// Update : Update credit card info
+// @router /:creditID [put]
+func (o *CreditController) Update() {
+	credit := new(models.Credit)
+	if err := o.ParseForm(credit); err != nil {
+		logs.Error("Parse credit struct error: %v", err.Error())
+		o.Ctx.Output.SetStatus(400)
+		o.Ctx.Output.Body([]byte("Request data error"))
+		return
+	}
+
+	if validateRet, err := credit.Validate(); err != nil {
+		logs.Error("validate credit struct error: %v", err.Error())
+		o.Abort("500")
+	} else if len(validateRet) > 0 {
+		o.Data["json"] = validateRet
+		o.Ctx.Output.SetStatus(400)
+		o.ServeJSON()
+		return
+	}
+
+	creditID := o.Ctx.Input.Param(":creditID")
+	intid, _ := strconv.ParseInt(creditID, 10, 64)
+	credit.Id = intid
+
+	err := models.UpdateCreditById(credit)
+	if err != nil {
+		logs.Warning("Update credit ID %v error: %v", creditID, err.Error())
+		o.Ctx.Output.SetStatus(404)
+		o.Ctx.Output.Body([]byte("Not found"))
+		return
+	}
+
+	o.Data["json"] = credit
 	o.ServeJSON()
 }
 

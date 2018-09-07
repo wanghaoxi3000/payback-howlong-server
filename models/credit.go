@@ -3,20 +3,35 @@ package models
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/astaxie/beego/orm"
 	"github.com/astaxie/beego/validation"
 )
 
+type dateInfo struct {
+	NextBill string // 下一账单日
+	NextPay  string // 下一还款日
+	CurPay   string // 当日消费还款日
+
+	WaitDay      int // 最长等待时间
+	DurationBill int // 账单日间隔
+	DurationPay  int // 还款日间隔
+}
+
+// Credit : Credit card info orm struct
 type Credit struct {
 	Id        int64  `orm:"auto" form:"-"`
 	Name      string `orm:"size(30)" form:"name" valid:"MinSize(1); MaxSize(20)"`
-	BillDay   int    `form:"billDay" valid:"Range(1, 28)"`
-	Payday    int    `form:"payDay" valid:"Range(1, 28)"`
+	BillDay   int    `form:"billDay" valid:"Range(1, 29)"` // 29 代表月底最后一天
+	PayDay    int    `form:"payDay" valid:"Range(1, 28)"`
 	PayFix    bool   `form:"payFix"`
 	SameMonth bool   `form:"sameMonth"`
+
+	DateInfo dateInfo `orm:"-"`
 }
 
 func init() {
@@ -29,16 +44,51 @@ func (c *Credit) Validate() (map[string]string, error) {
 	valid := validation.Validation{}
 
 	if info, err := valid.Valid(c); err != nil {
-		fmt.Println("Go to here 1111")
 		return nil, err
 	} else if !info {
-		fmt.Println("Go to here 2222")
 		for _, err := range valid.Errors {
 			validInfo[err.Key] = err.Message
 		}
 	}
 
+	// 账单日和还款日相同月份时
+	if c.SameMonth {
+		// 还款日固定时, 还款日不能小于账单日
+		if c.PayFix && c.PayDay < c.BillDay {
+			validInfo["Payday"] = "Pay day can not less than bill day in same month"
+		}
+		// 还款日为间隔, 还款间隔和账单日应当不大于29
+		if !c.PayFix && c.PayDay+c.BillDay > 29 {
+			validInfo["Payday"] = "The sum of pay and bill day could less than 29"
+		}
+
+	}
+
 	return validInfo, nil
+}
+
+func (c *Credit) CreditDetail(nowTime time.Time) {
+	billDate := nowTime.AddDate(0, 0, c.BillDay-nowTime.Day())
+	payDate := nowTime.AddDate(0, 0, c.PayDay-nowTime.Day())
+	curPayDate := time.Time(payDate)
+
+	if nowTime.After(billDate) {
+		billDate = billDate.AddDate(0, 1, 0)
+	}
+	if nowTime.After(payDate) {
+		payDate = payDate.AddDate(0, 1, 0)
+	}
+
+	waitDay := payDate.AddDate(0, 2, -1).Sub(billDate)
+	fmt.Println("This card wait day: ", math.Ceil(waitDay.Hours()/24))
+
+	curPayDate = billDate.AddDate(0, 1, c.PayDay-c.BillDay)
+	fmt.Println("Next bill day: ", billDate.Format("2006-01-02"))
+	fmt.Println("Next pay day: ", payDate.Format("2006-01-02"))
+	fmt.Println("Current spend pay day: ", curPayDate.Format("2006-01-02"))
+
+	fmt.Println("bill duration day: ", math.Ceil(billDate.Sub(nowTime).Hours()/24))
+	fmt.Println("pay duration day: ", math.Ceil(curPayDate.Sub(nowTime).Hours()/24))
 }
 
 // ListCreditInfo : list all credit card info
@@ -143,7 +193,7 @@ func GetAllCredit(query map[string]string, fields []string, sortby []string, ord
 	return nil, err
 }
 
-// UpdateCredit updates Credit by Id and returns error if
+// UpdateCreditById updates Credit by Id and returns error if
 // the record to be updated doesn't exist
 func UpdateCreditById(m *Credit) (err error) {
 	o := orm.NewOrm()

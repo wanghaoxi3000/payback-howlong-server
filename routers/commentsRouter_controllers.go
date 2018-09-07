@@ -25,6 +25,14 @@ func init() {
 
 	beego.GlobalControllerRouter["howlong/controllers:CreditController"] = append(beego.GlobalControllerRouter["howlong/controllers:CreditController"],
 		beego.ControllerComments{
+			Method: "Update",
+			Router: `/:creditID`,
+			AllowHTTPMethods: []string{"put"},
+			MethodParams: param.Make(),
+			Params: nil})
+
+	beego.GlobalControllerRouter["howlong/controllers:CreditController"] = append(beego.GlobalControllerRouter["howlong/controllers:CreditController"],
+		beego.ControllerComments{
 			Method: "Destroy",
 			Router: `/:creditID`,
 			AllowHTTPMethods: []string{"delete"},
