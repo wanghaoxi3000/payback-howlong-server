@@ -18,20 +18,19 @@ type dateInfo struct {
 	CurPay   string // 当日消费还款日
 
 	WaitDay      int // 最长等待时间
-	DurationBill int // 账单日间隔
-	DurationPay  int // 还款日间隔
+	IntervalBill int // 账单日间隔
+	IntervalPay  int // 还款日间隔
 }
 
 // Credit : Credit card info orm struct
 type Credit struct {
-	Id        int64  `orm:"auto" form:"-"`
-	Name      string `orm:"size(30)" form:"name" valid:"MinSize(1); MaxSize(20)"`
-	BillDay   int    `form:"billDay" valid:"Range(1, 29)"` // 29 代表月底最后一天
-	PayDay    int    `form:"payDay" valid:"Range(1, 28)"`
-	PayFix    bool   `form:"payFix"`
-	SameMonth bool   `form:"sameMonth"`
+	Id      int64  `orm:"auto" form:"-"`
+	Name    string `orm:"size(30)" form:"name" valid:"MinSize(1); MaxSize(20)"`
+	BillDay int    `form:"billDay" valid:"Range(1, 29)"` // 29 代表月底最后一天
+	PayDay  int    `form:"payDay" valid:"Range(1, 28)"`
+	PayFix  bool   `form:"payFix"` // true: 固定账单日 false: 固定天数
 
-	DateInfo dateInfo `orm:"-"`
+	DateInfo *dateInfo `orm:"-"`
 }
 
 func init() {
@@ -51,44 +50,52 @@ func (c *Credit) Validate() (map[string]string, error) {
 		}
 	}
 
-	// 账单日和还款日相同月份时
-	if c.SameMonth {
-		// 还款日固定时, 还款日不能小于账单日
-		if c.PayFix && c.PayDay < c.BillDay {
-			validInfo["Payday"] = "Pay day can not less than bill day in same month"
-		}
-		// 还款日为间隔, 还款间隔和账单日应当不大于29
-		if !c.PayFix && c.PayDay+c.BillDay > 29 {
-			validInfo["Payday"] = "The sum of pay and bill day could less than 29"
-		}
-
+	// 还款日为间隔, 还款间隔和账单日应当不大于28
+	if !c.PayFix && c.PayDay+c.BillDay > 28 {
+		validInfo["Payday"] = "The sum of pay and bill day could less than 29"
 	}
 
 	return validInfo, nil
 }
 
+// CreditDetail : Calculate credit card detail info
 func (c *Credit) CreditDetail(nowTime time.Time) {
-	billDate := nowTime.AddDate(0, 0, c.BillDay-nowTime.Day())
-	payDate := nowTime.AddDate(0, 0, c.PayDay-nowTime.Day())
-	curPayDate := time.Time(payDate)
+	var billDate, payDate, curPayDate time.Time
+	var waitDay time.Duration
 
+	if c.BillDay > 28 {
+		billDate = nowTime.AddDate(0, 1, -nowTime.Day())
+	} else {
+		billDate = nowTime.AddDate(0, 0, c.BillDay-nowTime.Day())
+	}
 	if nowTime.After(billDate) {
 		billDate = billDate.AddDate(0, 1, 0)
 	}
-	if nowTime.After(payDate) {
-		payDate = payDate.AddDate(0, 1, 0)
+
+	if c.PayFix {
+		payDate = nowTime.AddDate(0, 0, c.PayDay-nowTime.Day())
+		waitDay = billDate.AddDate(0, 2, c.PayDay-billDate.Day()).Sub(billDate)
+		if nowTime.After(payDate) {
+			payDate = payDate.AddDate(0, 1, 0)
+		}
+		curPayDate = billDate.AddDate(0, 1, c.PayDay-billDate.Day())
+	} else {
+		payDate = billDate.AddDate(0, -1, c.PayDay)
+		waitDay = billDate.AddDate(0, 1, c.PayDay).Sub(billDate)
+		if nowTime.After(payDate) {
+			payDate = billDate.AddDate(0, 0, c.PayDay)
+		}
+		curPayDate = billDate.AddDate(0, 0, c.PayDay)
 	}
 
-	waitDay := payDate.AddDate(0, 2, -1).Sub(billDate)
-	fmt.Println("This card wait day: ", math.Ceil(waitDay.Hours()/24))
-
-	curPayDate = billDate.AddDate(0, 1, c.PayDay-c.BillDay)
-	fmt.Println("Next bill day: ", billDate.Format("2006-01-02"))
-	fmt.Println("Next pay day: ", payDate.Format("2006-01-02"))
-	fmt.Println("Current spend pay day: ", curPayDate.Format("2006-01-02"))
-
-	fmt.Println("bill duration day: ", math.Ceil(billDate.Sub(nowTime).Hours()/24))
-	fmt.Println("pay duration day: ", math.Ceil(curPayDate.Sub(nowTime).Hours()/24))
+	c.DateInfo = &dateInfo{
+		billDate.Format("2006-01-02"),
+		payDate.Format("2006-01-02"),
+		curPayDate.Format("2006-01-02"),
+		int(math.Ceil(waitDay.Hours() / 24)),
+		int(math.Ceil(billDate.Sub(nowTime).Hours() / 24)),
+		int(math.Ceil(curPayDate.Sub(nowTime).Hours() / 24)),
+	}
 }
 
 // ListCreditInfo : list all credit card info
@@ -114,6 +121,7 @@ func GetCreditById(id int64) (v *Credit, err error) {
 	o := orm.NewOrm()
 	v = &Credit{Id: id}
 	if err = o.QueryTable(new(Credit)).Filter("Id", id).RelatedSel().One(v); err == nil {
+		v.CreditDetail(time.Now())
 		return v, nil
 	}
 	return nil, err
