@@ -127,6 +127,24 @@ func GetCreditById(id int64) (v *Credit, err error) {
 	return nil, err
 }
 
+func GetSortedCredit() (l []*Credit, err error) {
+	o := orm.NewOrm()
+	qs := o.QueryTable(new(Credit))
+
+	var num int64
+	if num, err = qs.All(&l); err != nil {
+		return nil, err
+	}
+
+	nowTime := time.Now()
+	for k, v := range l {
+		fmt.Println(k, num)
+		v.CreditDetail(nowTime)
+	}
+
+	return
+}
+
 // GetAllCredit retrieves all Credit matches certain condition. Returns empty list if
 // no records exist
 func GetAllCredit(query map[string]string, fields []string, sortby []string, order []string,

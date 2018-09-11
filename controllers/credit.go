@@ -61,6 +61,18 @@ func (o *CreditController) Retrieve() {
 	o.ServeJSON()
 }
 
+// List : List all credit card info
+// @router / [get]
+func (o *CreditController) List() {
+	if creditList, err := models.GetSortedCredit(); err != nil {
+		logs.Error("Get all credit from database error: %v", err.Error())
+		o.Abort("500")
+	} else {
+		o.Data["json"] = creditList
+		o.ServeJSON()
+	}
+}
+
 // Update : Update credit card info
 // @router /:creditID [put]
 func (o *CreditController) Update() {
