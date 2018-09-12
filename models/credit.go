@@ -98,15 +98,6 @@ func (c *Credit) CreditDetail(nowTime time.Time) {
 	}
 }
 
-// ListCreditInfo : list all credit card info
-func ListCreditInfo() []*Credit {
-	o := orm.NewOrm()
-	var credits []*Credit
-	o.QueryTable("Credit").All(&credits)
-
-	return credits
-}
-
 // AddCredit insert a new Credit into database and returns
 // last inserted Id on success.
 func AddCredit(m *Credit) (id int64, err error) {
@@ -127,19 +118,32 @@ func GetCreditById(id int64) (v *Credit, err error) {
 	return nil, err
 }
 
+// GetSortedCredit : Get all sorted credit card info
 func GetSortedCredit() (l []*Credit, err error) {
 	o := orm.NewOrm()
 	qs := o.QueryTable(new(Credit))
 
-	var num int64
-	if num, err = qs.All(&l); err != nil {
+	if _, err = qs.All(&l); err != nil {
 		return nil, err
 	}
 
 	nowTime := time.Now()
-	for k, v := range l {
-		fmt.Println(k, num)
-		v.CreditDetail(nowTime)
+	for _, v := range l {
+		if v.DateInfo == nil {
+			v.CreditDetail(nowTime)
+		}
+	}
+
+	length := len(l)
+	var sortFlag int
+	for k := range l {
+		sortFlag = k + 1
+		for i := sortFlag; i < length; i++ {
+			if l[k].DateInfo.IntervalPay < l[i].DateInfo.IntervalPay {
+				l[k], l[i] = l[i], l[k]
+			}
+		}
+
 	}
 
 	return
