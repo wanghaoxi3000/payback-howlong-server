@@ -30,6 +30,8 @@ type Credit struct {
 	PayDay  int    `form:"payDay" valid:"Range(1, 28)"`
 	PayFix  bool   `form:"payFix"` // true: 固定账单日 false: 固定天数
 
+	User *User `orm:"rel(fk);on_delete(cascade)"`
+
 	DateInfo *dateInfo `orm:"-"`
 }
 
