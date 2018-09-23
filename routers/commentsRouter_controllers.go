@@ -87,12 +87,4 @@ func init() {
 			MethodParams: param.Make(),
 			Params: nil})
 
-	beego.GlobalControllerRouter["howlong/controllers:UserController"] = append(beego.GlobalControllerRouter["howlong/controllers:UserController"],
-		beego.ControllerComments{
-			Method: "Create",
-			Router: `/`,
-			AllowHTTPMethods: []string{"post"},
-			MethodParams: param.Make(),
-			Params: nil})
-
 }

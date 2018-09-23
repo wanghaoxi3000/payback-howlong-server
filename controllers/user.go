@@ -6,30 +6,41 @@ import (
 	"howlong/utils"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/validation"
 )
 
 type UserController struct {
-	beego.Controller
+	BaseController
 }
 
 type loginSerializer struct {
-	OpenID string
+	baseSerializer
+
+	OpenID string `valid:"MinSize(1); MaxSize(20)"`
 }
 
-// Create : Create a credit card
-// @router / [post]
-func (o *UserController) Create() {
+// Login : Login a credit card
+func (o *UserController) Login() {
 	var (
-		loginInfo *loginSerializer
+		loginInfo loginSerializer
 		user      *models.User
 		err       error
 	)
 
-	loginInfo = new(loginSerializer)
-	if err = json.Unmarshal(o.Ctx.Input.RequestBody, loginInfo); err != nil {
-		o.Data["json"] = err.Error()
-		o.ServeJSON()
+	if err = json.Unmarshal(o.Ctx.Input.RequestBody, &loginInfo); err != nil {
+		o.ServerError(err, 400)
 		return
+	}
+
+	valid := validation.Validation{}
+	validInfo := make(map[string]string)
+	if info, e := valid.Valid(loginInfo); e != nil {
+		beego.Error("vailidate error: %v", e.Error())
+		// return nil, err
+	} else if !info {
+		for _, e := range valid.Errors {
+			validInfo[e.Key] = e.Message
+		}
 	}
 
 	if user, err = models.UpdateUserByOpenID(loginInfo.OpenID, utils.RandString(12)); err != nil {
