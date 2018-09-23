@@ -7,6 +7,22 @@ import (
 
 func init() {
 
+	beego.GlobalControllerRouter["howlong/controllers:AuthController"] = append(beego.GlobalControllerRouter["howlong/controllers:AuthController"],
+		beego.ControllerComments{
+			Method: "Login",
+			Router: `/login`,
+			AllowHTTPMethods: []string{"post"},
+			MethodParams: param.Make(),
+			Params: nil})
+
+	beego.GlobalControllerRouter["howlong/controllers:AuthController"] = append(beego.GlobalControllerRouter["howlong/controllers:AuthController"],
+		beego.ControllerComments{
+			Method: "RefreshToken",
+			Router: `/refresh-token`,
+			AllowHTTPMethods: []string{"get"},
+			MethodParams: param.Make(),
+			Params: nil})
+
 	beego.GlobalControllerRouter["howlong/controllers:CreditController"] = append(beego.GlobalControllerRouter["howlong/controllers:CreditController"],
 		beego.ControllerComments{
 			Method: "Create",

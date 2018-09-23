@@ -38,3 +38,14 @@ func UpdateUserByOpenID(openID string, seesion string) (obj *User, err error) {
 
 	return
 }
+
+// GetUserByID : Get user by ID
+func GetUserByID(id int64) (*User, error) {
+	o := orm.NewOrm()
+	user := &User{Id: id}
+	if err := o.Read(user, "Id"); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}

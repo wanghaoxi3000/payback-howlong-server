@@ -8,10 +8,8 @@ import (
 
 func init() {
 	ns := beego.NewNamespace("/v1",
-		beego.NSNamespace("/users",
-			beego.NSRouter("/login", &controllers.UserController{}, "post:Login"),
-
-			beego.NSInclude(&controllers.UserController{}),
+		beego.NSNamespace("/auth",
+			beego.NSInclude(&controllers.AuthController{}),
 		),
 		beego.NSNamespace("/credits",
 			beego.NSInclude(&controllers.CreditController{}),
