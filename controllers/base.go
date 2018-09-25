@@ -65,6 +65,9 @@ func (o *baseController) ServerError(msg interface{}, code int) {
 	errMsg := make(map[string]string)
 
 	switch v := msg.(type) {
+	case string:
+		errMsg["error"] = v
+
 	case error:
 		errMsg["error"] = v.Error()
 

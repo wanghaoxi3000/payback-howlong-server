@@ -64,7 +64,7 @@ func checkToken(tokenString string) *models.User {
 		return authUser
 	}
 
-	beego.Error(err)
+	beego.Warning("token invalid:", err)
 	return nil
 }
 
@@ -100,5 +100,18 @@ func (o *AuthController) Login() {
 // RefreshToken : Refresh token expired time
 // @router /refresh-token [get]
 func (o *AuthController) RefreshToken() {
-	beego.Info(o.user.Updated)
+	if o.user == nil {
+		o.Abort("401")
+	}
+
+	token, err := genToken(o.user.Id, o.user.SessionKey)
+	if err != nil {
+		beego.Error("Gen JWT token error: ", err)
+		o.ServerError(errors.New("Gen token error"), notAvailable)
+	}
+
+	authInfo := make(map[string]string)
+	authInfo["token"] = token
+	o.Data["json"] = authInfo
+	o.ServeJSON()
 }
