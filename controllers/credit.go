@@ -4,12 +4,11 @@ import (
 	"howlong/models"
 	"strconv"
 
-	"github.com/astaxie/beego"
 	"github.com/astaxie/beego/logs"
 )
 
 type CreditController struct {
-	beego.Controller
+	authController
 }
 
 // Create : Create a credit card
@@ -64,13 +63,15 @@ func (o *CreditController) Retrieve() {
 // List : List all credit card info
 // @router / [get]
 func (o *CreditController) List() {
-	if creditList, err := models.GetSortedCredit(); err != nil {
-		logs.Error("Get all credit from database error: %v", err.Error())
-		o.Abort("500")
-	} else {
-		o.Data["json"] = creditList
-		o.ServeJSON()
-	}
+	// if creditList, err := models.GetSortedCredit(); err != nil {
+	// 	logs.Error("Get all credit from database error: %v", err.Error())
+	// 	o.Abort("500")
+	// } else {
+	// 	o.Data["json"] = creditList
+	// 	o.ServeJSON()
+	// }
+	o.Data["json"] = o.user
+	o.ServeJSON()
 }
 
 // Update : Update credit card info

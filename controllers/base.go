@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	badRequest   = 400
+	badRequest = 400
+	notAuthenticated
+
 	innerError   = 500
 	notAvailable = 503
 )
@@ -79,7 +81,7 @@ func (o *baseController) ServerError(msg interface{}, code int) {
 		o.Abort("500")
 	}
 
-	beego.Debug("server err:", errMsg, "code:", code)
+	beego.Warning("server err:", errMsg, "code:", code)
 	o.Data["json"] = errMsg
 	o.Ctx.Output.SetStatus(code)
 	o.ServeJSON()
@@ -103,4 +105,12 @@ func (o *baseController) UnserializeStruct(model serializer) error {
 	}
 
 	return nil
+}
+
+type authController struct {
+	baseController
+}
+
+func (o *authController) ServerNoAuth() {
+	o.ServerError("no auth user", notAuthenticated)
 }
