@@ -14,6 +14,10 @@ type CreditController struct {
 // Create : Create a credit card
 // @router / [post]
 func (o *CreditController) Create() {
+	var creditInfo creditSerializer
+	o.UnserializeStruct(&creditInfo)
+	logs.Debug(creditInfo)
+
 	credit := new(models.Credit)
 
 	if err := o.ParseForm(credit); err != nil {
