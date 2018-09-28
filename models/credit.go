@@ -104,19 +104,29 @@ func (c *Credit) CreditDetail(nowTime time.Time) {
 // last inserted Id on success.
 func AddCredit(m *Credit) (id int64, err error) {
 	o := orm.NewOrm()
+	cnt, err := o.QueryTable(m).Filter("User", m.User.Id).Filter("Name", m.Name).Count()
+	if err != nil {
+		return
+	}
+	if cnt > 0 {
+		err = fmt.Errorf("%s 已存在", m.Name)
+		return 0, err
+	}
+
 	id, err = o.Insert(m)
 	return
 }
 
-// GetCreditById retrieves Credit by Id. Returns error if
+// GetUserCreditByID : Retrieves user credit by ID. Returns error if
 // Id doesn't exist
-func GetCreditById(id int64) (v *Credit, err error) {
+func GetUserCreditByID(user *User, id int64) (v *Credit, err error) {
 	o := orm.NewOrm()
 	v = &Credit{Id: id}
-	if err = o.QueryTable(new(Credit)).Filter("Id", id).RelatedSel().One(v); err == nil {
-		v.CreditDetail(time.Now())
+
+	if err = o.QueryTable(v).Filter("User", user.Id).Filter("Id", id).One(v); err == nil {
 		return v, nil
 	}
+
 	return nil, err
 }
 

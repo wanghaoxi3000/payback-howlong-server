@@ -81,7 +81,7 @@ func (o *AuthController) Login() {
 	user, err := models.UpdateUserByOpenID(loginInfo.LoginCode, utils.RandString(12))
 	if err != nil {
 		beego.Error("Retrieve user error, openid:", loginInfo.LoginCode, "error:", err)
-		o.ServerError(fmt.Errorf("Find user %v error", loginInfo.LoginCode), badRequest)
+		o.ServerError(fmt.Errorf("Find user %v error", loginInfo.LoginCode), httpBadRequest)
 	}
 
 	token, err := genToken(user.Id, user.SessionKey)

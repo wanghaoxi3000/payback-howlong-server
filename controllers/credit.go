@@ -16,34 +16,18 @@ type CreditController struct {
 func (o *CreditController) Create() {
 	var creditInfo creditSerializer
 	o.UnserializeStruct(&creditInfo)
-	logs.Debug(creditInfo)
 
-	credit := new(models.Credit)
+	creditModel := creditInfo.unserializer()
+	creditModel.User = o.user
 
-	if err := o.ParseForm(credit); err != nil {
-		logs.Error("Parse credit struct error: %v", err.Error())
-		o.Ctx.Output.SetStatus(400)
-		o.Ctx.Output.Body([]byte("Request data error"))
-		return
+	id, err := models.AddCredit(creditModel)
+	if err != nil {
+		o.ServerError(err, httpBadRequest)
 	}
 
-	if validateRet, err := credit.Validate(); err != nil {
-		logs.Error("validate credit struct error: %v", err.Error())
-		o.Abort("500")
-	} else if len(validateRet) > 0 {
-		o.Data["json"] = validateRet
-		o.Ctx.Output.SetStatus(400)
-		o.ServeJSON()
-		return
-	}
-
-	if id, err := models.AddCredit(credit); err == nil {
-		o.Data["json"] = map[string]int64{"id": id}
-		o.ServeJSON()
-	} else {
-		logs.Error("Save credit struct error: %v", err.Error())
-		o.Abort("500")
-	}
+	o.Data["json"] = map[string]int64{"id": id}
+	o.Ctx.Output.SetStatus(httpCreated)
+	o.ServeJSON()
 }
 
 // Retrieve : Retrieve a credit card info
@@ -52,15 +36,17 @@ func (o *CreditController) Retrieve() {
 	creditID := o.Ctx.Input.Param(":creditID")
 	intid, _ := strconv.ParseInt(creditID, 10, 64)
 
-	t, err := models.GetCreditById(intid)
+	c, err := models.GetUserCreditByID(o.user, intid)
 	if err != nil {
-		logs.Warning("Get credit ID %v error: %v", creditID, err.Error())
-		o.Ctx.Output.SetStatus(404)
-		o.Ctx.Output.Body([]byte("Not found"))
+		logs.Warning("Get credit ID %v error: %v", creditID, err)
+		o.ServerError("Not found", httpNotFound)
 		return
 	}
 
-	o.Data["json"] = t
+	creditSerial := new(creditSerializer)
+	creditSerial.serializer(c)
+
+	o.Data["json"] = creditSerial
 	o.ServeJSON()
 }
 

@@ -1,5 +1,11 @@
 package controllers
 
+import (
+	"howlong/models"
+	"math"
+	"time"
+)
+
 type dateInfo struct {
 	NextBill string // 下一账单日
 	NextPay  string // 下一还款日
@@ -17,7 +23,7 @@ type creditSerializer struct {
 	PayDay  int    `valid:"Range(1, 28)"`
 	PayFix  bool
 
-	DateInfo *dateInfo
+	DateDetail *dateInfo
 }
 
 func (c *creditSerializer) Validate() (validInfo map[string]string, err error) {
@@ -32,4 +38,64 @@ func (c *creditSerializer) Validate() (validInfo map[string]string, err error) {
 	}
 
 	return
+}
+
+// CreditDetail : Calculate credit card detail info
+func (c *creditSerializer) CreditDetail(nowTime time.Time) {
+	var billDate, payDate, curPayDate time.Time
+	var waitDay time.Duration
+
+	if c.BillDay > 28 {
+		billDate = nowTime.AddDate(0, 1, -nowTime.Day())
+	} else {
+		billDate = nowTime.AddDate(0, 0, c.BillDay-nowTime.Day())
+	}
+	if nowTime.After(billDate) {
+		billDate = billDate.AddDate(0, 1, 0)
+	}
+
+	if c.PayFix {
+		payDate = nowTime.AddDate(0, 0, c.PayDay-nowTime.Day())
+		waitDay = billDate.AddDate(0, 2, c.PayDay-billDate.Day()).Sub(billDate)
+		if nowTime.After(payDate) {
+			payDate = payDate.AddDate(0, 1, 0)
+		}
+		curPayDate = billDate.AddDate(0, 1, c.PayDay-billDate.Day())
+	} else {
+		payDate = billDate.AddDate(0, -1, c.PayDay)
+		waitDay = billDate.AddDate(0, 1, c.PayDay).Sub(billDate)
+		if nowTime.After(payDate) {
+			payDate = billDate.AddDate(0, 0, c.PayDay)
+		}
+		curPayDate = billDate.AddDate(0, 0, c.PayDay)
+	}
+
+	c.DateDetail = &dateInfo{
+		billDate.Format("2006-01-02"),
+		payDate.Format("2006-01-02"),
+		curPayDate.Format("2006-01-02"),
+		int(math.Ceil(waitDay.Hours() / 24)),
+		int(math.Ceil(billDate.Sub(nowTime).Hours() / 24)),
+		int(math.Ceil(curPayDate.Sub(nowTime).Hours() / 24)),
+	}
+}
+
+func (c *creditSerializer) serializer(credit *models.Credit) {
+	c.Id = credit.Id
+	c.Name = credit.Name
+	c.BillDay = credit.BillDay
+	c.PayDay = credit.PayDay
+
+	c.CreditDetail(time.Now())
+}
+
+func (c *creditSerializer) unserializer() *models.Credit {
+	creditModel := &models.Credit{
+		Name:    c.Name,
+		BillDay: c.BillDay,
+		PayDay:  c.PayDay,
+		PayFix:  c.PayFix,
+	}
+
+	return creditModel
 }

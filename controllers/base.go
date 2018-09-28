@@ -11,8 +11,13 @@ import (
 )
 
 const (
-	badRequest = 400
-	notAuthenticated
+	httpCreated = 201
+
+	httpBadRequest = 400
+	httpUnauthorized
+	httpPaymentRequried
+	httpForbidden
+	httpNotFound
 
 	innerError   = 500
 	notAvailable = 503
@@ -91,16 +96,16 @@ func (o *baseController) ServerError(msg interface{}, code int) {
 // UnserializeStruct : Unserialize to struct
 func (o *baseController) UnserializeStruct(model serializer) error {
 	if err := json.Unmarshal(o.Ctx.Input.RequestBody, model); err != nil {
-		o.ServerError(err, badRequest)
+		o.ServerError(err, httpBadRequest)
 		return err
 	}
 
 	if validateRet, err := model.Validate(); err != nil {
 		beego.Error("validate struct %T error: %v", model, err)
-		o.ServerError(errors.New("unknown data"), badRequest)
+		o.ServerError(errors.New("unknown data"), httpBadRequest)
 		return err
 	} else if len(validateRet) > 0 {
-		o.ServerError(validateRet, badRequest)
+		o.ServerError(validateRet, httpBadRequest)
 		return errors.New("invalid data")
 	}
 
@@ -112,5 +117,5 @@ type authController struct {
 }
 
 func (o *authController) ServerNoAuth() {
-	o.ServerError("no auth user", notAuthenticated)
+	o.ServerError("no auth user", httpUnauthorized)
 }
