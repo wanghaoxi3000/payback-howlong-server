@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/logs"
 	"github.com/astaxie/beego/validation"
 )
 
@@ -82,11 +83,11 @@ func (o *baseController) ServerError(msg interface{}, code int) {
 		errMsg = v
 
 	default:
-		beego.Error("server error, unexpected type %T", v)
+		logs.Error("server error, unexpected type %T", v)
 		o.Abort("500")
 	}
 
-	beego.Warning("server err:", errMsg, "code:", code)
+	beego.Debug("server err:", errMsg, "code:", code)
 	o.Data["json"] = errMsg
 	o.Ctx.Output.SetStatus(code)
 	o.ServeJSON()
@@ -94,22 +95,18 @@ func (o *baseController) ServerError(msg interface{}, code int) {
 }
 
 // UnserializeStruct : Unserialize to struct
-func (o *baseController) UnserializeStruct(model serializer) error {
+func (o *baseController) UnserializeStruct(model serializer) {
 	if err := json.Unmarshal(o.Ctx.Input.RequestBody, model); err != nil {
-		o.ServerError(err, httpBadRequest)
-		return err
+		beego.Warning("Unmarshal error:", o.Ctx.Input.RequestBody)
+		o.ServerError("Invalid data", httpBadRequest)
 	}
 
 	if validateRet, err := model.Validate(); err != nil {
-		beego.Error("validate struct %T error: %v", model, err)
+		logs.Error("validate struct %T error: %v", model, err)
 		o.ServerError(errors.New("unknown data"), httpBadRequest)
-		return err
 	} else if len(validateRet) > 0 {
 		o.ServerError(validateRet, httpBadRequest)
-		return errors.New("invalid data")
 	}
-
-	return nil
 }
 
 type authController struct {

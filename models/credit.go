@@ -3,24 +3,11 @@ package models
 import (
 	"errors"
 	"fmt"
-	"math"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/astaxie/beego/orm"
-	"github.com/astaxie/beego/validation"
 )
-
-type dateInfo struct {
-	NextBill string // 下一账单日
-	NextPay  string // 下一还款日
-	CurPay   string // 当日消费还款日
-
-	WaitDay      int // 最长等待时间
-	IntervalBill int // 账单日间隔
-	IntervalPay  int // 还款日间隔
-}
 
 // Credit : Credit card info orm struct
 type Credit struct {
@@ -31,73 +18,10 @@ type Credit struct {
 	PayFix  bool   `form:"payFix"` // true: 固定账单日 false: 固定天数
 
 	User *User `orm:"rel(fk);on_delete(cascade)"`
-
-	DateInfo *dateInfo `orm:"-"`
 }
 
 func init() {
 	orm.RegisterModel(new(Credit))
-}
-
-// Validate : Validate credit struct data
-func (c *Credit) Validate() (map[string]string, error) {
-	validInfo := make(map[string]string)
-	valid := validation.Validation{}
-
-	if info, err := valid.Valid(c); err != nil {
-		return nil, err
-	} else if !info {
-		for _, err := range valid.Errors {
-			validInfo[err.Key] = err.Message
-		}
-	}
-
-	// 还款日为间隔, 还款间隔和账单日应当不大于28
-	if !c.PayFix && c.PayDay+c.BillDay > 28 {
-		validInfo["Payday"] = "The sum of pay and bill day could less than 29"
-	}
-
-	return validInfo, nil
-}
-
-// CreditDetail : Calculate credit card detail info
-func (c *Credit) CreditDetail(nowTime time.Time) {
-	var billDate, payDate, curPayDate time.Time
-	var waitDay time.Duration
-
-	if c.BillDay > 28 {
-		billDate = nowTime.AddDate(0, 1, -nowTime.Day())
-	} else {
-		billDate = nowTime.AddDate(0, 0, c.BillDay-nowTime.Day())
-	}
-	if nowTime.After(billDate) {
-		billDate = billDate.AddDate(0, 1, 0)
-	}
-
-	if c.PayFix {
-		payDate = nowTime.AddDate(0, 0, c.PayDay-nowTime.Day())
-		waitDay = billDate.AddDate(0, 2, c.PayDay-billDate.Day()).Sub(billDate)
-		if nowTime.After(payDate) {
-			payDate = payDate.AddDate(0, 1, 0)
-		}
-		curPayDate = billDate.AddDate(0, 1, c.PayDay-billDate.Day())
-	} else {
-		payDate = billDate.AddDate(0, -1, c.PayDay)
-		waitDay = billDate.AddDate(0, 1, c.PayDay).Sub(billDate)
-		if nowTime.After(payDate) {
-			payDate = billDate.AddDate(0, 0, c.PayDay)
-		}
-		curPayDate = billDate.AddDate(0, 0, c.PayDay)
-	}
-
-	c.DateInfo = &dateInfo{
-		billDate.Format("2006-01-02"),
-		payDate.Format("2006-01-02"),
-		curPayDate.Format("2006-01-02"),
-		int(math.Ceil(waitDay.Hours() / 24)),
-		int(math.Ceil(billDate.Sub(nowTime).Hours() / 24)),
-		int(math.Ceil(curPayDate.Sub(nowTime).Hours() / 24)),
-	}
 }
 
 // AddCredit insert a new Credit into database and returns
@@ -130,34 +54,10 @@ func GetUserCreditByID(user *User, id int64) (v *Credit, err error) {
 	return nil, err
 }
 
-// GetSortedCredit : Get all sorted credit card info
-func GetSortedCredit() (l []*Credit, err error) {
+// GetUserAllCredit : Get user's all credit and return err if fail
+func GetUserAllCredit(user *User, v *[]*Credit) (num int64, err error) {
 	o := orm.NewOrm()
-	qs := o.QueryTable(new(Credit))
-
-	if _, err = qs.All(&l); err != nil {
-		return nil, err
-	}
-
-	nowTime := time.Now()
-	for _, v := range l {
-		if v.DateInfo == nil {
-			v.CreditDetail(nowTime)
-		}
-	}
-
-	length := len(l)
-	var sortFlag int
-	for k := range l {
-		sortFlag = k + 1
-		for i := sortFlag; i < length; i++ {
-			if l[k].DateInfo.IntervalPay < l[i].DateInfo.IntervalPay {
-				l[k], l[i] = l[i], l[k]
-			}
-		}
-
-	}
-
+	num, err = o.QueryTable("credit").Filter("User", user.Id).RelatedSel().All(v)
 	return
 }
 
@@ -235,32 +135,18 @@ func GetAllCredit(query map[string]string, fields []string, sortby []string, ord
 	return nil, err
 }
 
-// UpdateCreditById updates Credit by Id and returns error if
-// the record to be updated doesn't exist
-func UpdateCreditById(m *Credit) (err error) {
+// UpdateCredit : Updates Credit and returns error if
+// the record can not to be updated
+func UpdateCredit(m *Credit) (err error) {
 	o := orm.NewOrm()
-	v := Credit{Id: m.Id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Update(m); err == nil {
-			fmt.Println("Number of records updated in database:", num)
-		}
-	}
+	_, err = o.Update(m)
 	return
 }
 
-// DeleteCredit deletes Credit by Id and returns error if
-// the record to be deleted doesn't exist
-func DeleteCredit(id int64) (err error) {
+// DeleteCredit : Deletes Credit and returns error if
+// the record can not to be deleted
+func DeleteCredit(credit *Credit) (err error) {
 	o := orm.NewOrm()
-	v := Credit{Id: id}
-	// ascertain id exists in the database
-	if err = o.Read(&v); err == nil {
-		var num int64
-		if num, err = o.Delete(&Credit{Id: id}); err == nil {
-			fmt.Println("Number of records deleted in database:", num)
-		}
-	}
+	_, err = o.Delete(credit)
 	return
 }

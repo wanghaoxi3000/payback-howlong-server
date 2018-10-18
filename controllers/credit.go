@@ -4,7 +4,7 @@ import (
 	"howlong/models"
 	"strconv"
 
-	"github.com/astaxie/beego/logs"
+	"github.com/astaxie/beego"
 )
 
 type CreditController struct {
@@ -38,7 +38,7 @@ func (o *CreditController) Retrieve() {
 
 	c, err := models.GetUserCreditByID(o.user, intid)
 	if err != nil {
-		logs.Warning("Get credit ID %v error: %v", creditID, err)
+		beego.Warning("Get credit ID", creditID, "error:", err)
 		o.ServerError("Not found", httpNotFound)
 		return
 	}
@@ -53,51 +53,63 @@ func (o *CreditController) Retrieve() {
 // List : List all credit card info
 // @router / [get]
 func (o *CreditController) List() {
-	// if creditList, err := models.GetSortedCredit(); err != nil {
-	// 	logs.Error("Get all credit from database error: %v", err.Error())
-	// 	o.Abort("500")
-	// } else {
-	// 	o.Data["json"] = creditList
-	// 	o.ServeJSON()
-	// }
-	o.Data["json"] = o.user
+	var credits []*models.Credit
+	num, err := models.GetUserAllCredit(o.user, &credits)
+	if err != nil {
+		beego.Warning("Get credits error, user ID", o.user.Id, "error:", err)
+		o.ServerError("Get fail", notAvailable)
+		return
+	}
+
+	length := int(num)
+	creditsStructs := make([]*creditSerializer, length)
+	for i := range credits {
+		creditsStructs[i] = new(creditSerializer)
+		creditsStructs[i].serializer(credits[i])
+	}
+
+	var sortFlag int
+	for k := range creditsStructs {
+		sortFlag = k + 1
+		for i := sortFlag; i < length; i++ {
+			if creditsStructs[k].DateDetail.IntervalPay < creditsStructs[i].DateDetail.IntervalPay {
+				creditsStructs[k], creditsStructs[i] = creditsStructs[i], creditsStructs[k]
+			}
+		}
+
+	}
+
+	o.Data["json"] = creditsStructs
 	o.ServeJSON()
 }
 
 // Update : Update credit card info
 // @router /:creditID [put]
 func (o *CreditController) Update() {
-	credit := new(models.Credit)
-	if err := o.ParseForm(credit); err != nil {
-		logs.Error("Parse credit struct error: %v", err.Error())
-		o.Ctx.Output.SetStatus(400)
-		o.Ctx.Output.Body([]byte("Request data error"))
-		return
-	}
-
-	if validateRet, err := credit.Validate(); err != nil {
-		logs.Error("validate credit struct error: %v", err.Error())
-		o.Abort("500")
-	} else if len(validateRet) > 0 {
-		o.Data["json"] = validateRet
-		o.Ctx.Output.SetStatus(400)
-		o.ServeJSON()
-		return
-	}
-
 	creditID := o.Ctx.Input.Param(":creditID")
 	intid, _ := strconv.ParseInt(creditID, 10, 64)
-	credit.Id = intid
-
-	err := models.UpdateCreditById(credit)
+	_, err := models.GetUserCreditByID(o.user, intid)
 	if err != nil {
-		logs.Warning("Update credit ID %v error: %v", creditID, err.Error())
-		o.Ctx.Output.SetStatus(404)
-		o.Ctx.Output.Body([]byte("Not found"))
+		beego.Warning("Get credits error, user ID", o.user.Id, "error:", err)
+		o.ServerError("Not found", httpNotFound)
 		return
 	}
 
-	o.Data["json"] = credit
+	var creditInfo creditSerializer
+	o.UnserializeStruct(&creditInfo)
+	creditModel := creditInfo.unserializer()
+	creditModel.Id = intid
+	creditModel.User = o.user
+
+	err = models.UpdateCredit(creditModel)
+	if err != nil {
+		beego.Warning("Update credit ID", intid, "error:", err)
+		o.ServerError("Delete fail", notAvailable)
+		return
+	}
+
+	creditModel.CreditDetail()
+	o.Data["json"] = creditInfo
 	o.ServeJSON()
 }
 
@@ -107,11 +119,17 @@ func (o *CreditController) Destroy() {
 	creditID := o.Ctx.Input.Param(":creditID")
 	intid, _ := strconv.ParseInt(creditID, 10, 64)
 
-	if err := models.DeleteCredit(intid); err != nil {
-		logs.Warning("Delete credit Id %v error: %v", creditID, err.Error())
-		o.Ctx.Output.SetStatus(404)
-		o.Ctx.Output.Body([]byte("Not found"))
+	c, err := models.GetUserCreditByID(o.user, intid)
+	if err != nil {
+		beego.Warning("Get credits error, user ID", o.user.Id, "error:", err)
+		o.ServerError("Not found", httpNotFound)
 		return
+	}
+
+	err = models.DeleteCredit(c)
+	if err != nil {
+		beego.Error("Delete credit ID:", creditID, "error:", err)
+		o.ServerError("Delete fail", notAvailable)
 	}
 
 	o.Data["json"] = "delete success!"
