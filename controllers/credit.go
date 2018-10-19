@@ -88,9 +88,9 @@ func (o *CreditController) List() {
 func (o *CreditController) Update() {
 	creditID := o.Ctx.Input.Param(":creditID")
 	intid, _ := strconv.ParseInt(creditID, 10, 64)
+
 	_, err := models.GetUserCreditByID(o.user, intid)
 	if err != nil {
-		beego.Warning("Get credits error, user ID", o.user.Id, "error:", err)
 		o.ServerError("Not found", httpNotFound)
 		return
 	}
@@ -101,14 +101,13 @@ func (o *CreditController) Update() {
 	creditModel.Id = intid
 	creditModel.User = o.user
 
-	err = models.UpdateCredit(creditModel)
+	err = models.UpdateUserCredit(creditModel)
 	if err != nil {
-		beego.Warning("Update credit ID", intid, "error:", err)
-		o.ServerError("Delete fail", notAvailable)
+		o.ServerError(err, httpBadRequest)
 		return
 	}
 
-	creditModel.CreditDetail()
+	creditInfo.serializer(creditModel)
 	o.Data["json"] = creditInfo
 	o.ServeJSON()
 }

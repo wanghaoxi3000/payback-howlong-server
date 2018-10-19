@@ -58,6 +58,9 @@ func GetUserCreditByID(user *User, id int64) (v *Credit, err error) {
 func GetUserAllCredit(user *User, v *[]*Credit) (num int64, err error) {
 	o := orm.NewOrm()
 	num, err = o.QueryTable("credit").Filter("User", user.Id).RelatedSel().All(v)
+	if err == orm.ErrNoRows {
+		return 0, nil
+	}
 	return
 }
 
@@ -135,10 +138,13 @@ func GetAllCredit(query map[string]string, fields []string, sortby []string, ord
 	return nil, err
 }
 
-// UpdateCredit : Updates Credit and returns error if
+// UpdateUserCredit : Updates a user's credit and returns error if
 // the record can not to be updated
-func UpdateCredit(m *Credit) (err error) {
+func UpdateUserCredit(m *Credit) (err error) {
 	o := orm.NewOrm()
+	if exist := o.QueryTable(m).Exclude("Id", m.Id).Filter("User", m.User.Id).Filter("Name", m.Name).Exist(); exist == true {
+		return fmt.Errorf("%s 已存在", m.Name)
+	}
 	_, err = o.Update(m)
 	return
 }

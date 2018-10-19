@@ -32,8 +32,8 @@ func (c *creditSerializer) Validate() (validInfo map[string]string, err error) {
 		return
 	}
 
-	// 还款日为间隔, 还款间隔和账单日应当不大于28
-	if !c.PayFix && c.PayDay+c.BillDay > 28 {
+	// 还款日为间隔, 还款日和账单日间隔应当不大于28
+	if !c.PayFix && c.PayDay > 28 {
 		validInfo["Payday"] = "The sum of pay and bill day could less than 29"
 	}
 
@@ -85,6 +85,7 @@ func (c *creditSerializer) serializer(credit *models.Credit) {
 	c.Name = credit.Name
 	c.BillDay = credit.BillDay
 	c.PayDay = credit.PayDay
+	c.PayFix = credit.PayFix
 
 	c.CreditDetail(time.Now())
 }

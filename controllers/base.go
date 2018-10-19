@@ -14,7 +14,7 @@ import (
 const (
 	httpCreated = 201
 
-	httpBadRequest = 400
+	httpBadRequest = iota + 399 // iota = 1
 	httpUnauthorized
 	httpPaymentRequried
 	httpForbidden
@@ -25,7 +25,7 @@ const (
 )
 
 type serializer interface {
-	Validate() (map[string]string, error)
+	Validate() (map[string]string, error) // TODO: 可将数据库中重复性检查移入这个过程
 }
 
 func validateStruct(obj interface{}) (map[string]string, error) {
