@@ -28,11 +28,16 @@ func init() {
 // last inserted Id on success.
 func AddCredit(m *Credit) (id int64, err error) {
 	o := orm.NewOrm()
-	cnt, err := o.QueryTable(m).Filter("User", m.User.Id).Filter("Name", m.Name).Count()
+	querySet := o.QueryTable(m)
+	cnt, err := querySet.Filter("User", m.User.Id).Count()
 	if err != nil {
 		return
 	}
-	if cnt > 0 {
+	if cnt > 30 {
+		return 0, errors.New("最多创建30个")
+	}
+
+	if exist := querySet.Filter("User", m.User.Id).Filter("Name", m.Name).Exist(); exist {
 		err = fmt.Errorf("%s 已存在", m.Name)
 		return 0, err
 	}
