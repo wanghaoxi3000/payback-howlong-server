@@ -97,7 +97,7 @@ func (o *baseController) ServerError(msg interface{}, code int) {
 // UnserializeStruct : Unserialize to struct
 func (o *baseController) UnserializeStruct(model serializer) {
 	if err := json.Unmarshal(o.Ctx.Input.RequestBody, model); err != nil {
-		beego.Warning("Unmarshal error:", o.Ctx.Input.RequestBody)
+		beego.Warning("Unmarshal error:", string(o.Ctx.Input.RequestBody))
 		o.ServerError("Invalid data", httpBadRequest)
 	}
 
