@@ -131,6 +131,6 @@ func (o *CreditController) Destroy() {
 		o.ServerError("Delete fail", notAvailable)
 	}
 
-	o.Data["json"] = "delete success!"
+	o.Ctx.Output.SetStatus(httpNoContent)
 	o.ServeJSON()
 }

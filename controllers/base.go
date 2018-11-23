@@ -12,14 +12,19 @@ import (
 )
 
 const (
-	httpCreated = 201
+	httpCreated   = 201
+	httpNoContent = 204
+)
 
-	httpBadRequest = iota + 399 // iota = 1
+const (
+	httpBadRequest = iota + 400
 	httpUnauthorized
 	httpPaymentRequried
 	httpForbidden
 	httpNotFound
+)
 
+const (
 	innerError   = 500
 	notAvailable = 503
 )
