@@ -104,7 +104,7 @@ func (o *AuthController) Login() {
 	o.UnserializeStruct(&loginInfo)
 
 	rep := code2Session(loginInfo.LoginCode)
-	if rep.errcode != 0 {
+	if rep.errcode != 0 || rep.Openid == "" {
 		beego.Error("get openID error, code: ", rep.errcode)
 		o.ServerError(errors.New("Get openID error"), notAvailable)
 	}
