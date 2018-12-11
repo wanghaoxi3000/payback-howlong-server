@@ -1,16 +1,41 @@
 package controllers
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"howlong/models"
-	"howlong/utils"
 	"strconv"
 	"time"
 
 	"github.com/astaxie/beego"
+	"github.com/astaxie/beego/httplib"
 	jwt "github.com/dgrijalva/jwt-go"
 )
+
+type sessionReponse struct {
+	Openid  string
+	Session string `json:"session_key"`
+	Unionid string
+	errcode int
+	errmsg  string
+}
+
+// code2Session: use weixin api to get user's openID and session key
+func code2Session(jsCode string) *sessionReponse {
+	reqAddr := fmt.Sprintf("%s?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
+		beego.AppConfig.String("weiLoginApi"),
+		beego.AppConfig.String("weiAppid"),
+		beego.AppConfig.String("weiSecret"),
+		jsCode)
+	beego.Debug("User login get openID and session from: ", reqAddr)
+
+	reqData := &sessionReponse{}
+	req := httplib.Get(reqAddr).SetTLSClientConfig(&tls.Config{InsecureSkipVerify: true})
+	req.ToJSON(reqData)
+
+	return reqData
+}
 
 // genToken : Generate JWT token, expire time 1 hour default
 func genToken(userID int64, key string) (jwtToken string, err error) {
@@ -78,7 +103,13 @@ func (o *AuthController) Login() {
 	var loginInfo loginSerializer
 	o.UnserializeStruct(&loginInfo)
 
-	user, err := models.UpdateUserByOpenID(loginInfo.LoginCode, utils.RandString(12))
+	rep := code2Session(loginInfo.LoginCode)
+	if rep.errcode != 0 {
+		beego.Error("get openID error, code: ", rep.errcode)
+		o.ServerError(errors.New("Get openID error"), notAvailable)
+	}
+
+	user, err := models.UpdateUserByOpenID(rep.Openid, rep.Session)
 	if err != nil {
 		beego.Error("Retrieve user error, openid:", loginInfo.LoginCode, "error:", err)
 		o.ServerError(fmt.Errorf("Find user %v error", loginInfo.LoginCode), httpBadRequest)
