@@ -132,7 +132,6 @@ func (o *AuthController) Login() {
 // @router /refresh-token [get]
 func (o *AuthController) RefreshToken() {
 	if o.user == nil {
-		beego.Info(httpBadRequest, httpUnauthorized, httpPaymentRequried)
 		o.ServerError("no auth user", httpUnauthorized)
 	}
 
