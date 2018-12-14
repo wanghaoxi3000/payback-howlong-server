@@ -19,7 +19,7 @@ func init() {
 	}
 	fmt.Println("Load sqlite db from ", dbPath)
 
-	orm.RegisterDataBase("default", "sqlite3", "./howlong.db")
+	orm.RegisterDataBase("default", "sqlite3", dbPath)
 	// 创建table
 	orm.RunSyncdb("default", false, true)
 }
