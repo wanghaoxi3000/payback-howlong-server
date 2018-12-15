@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"howlong/models"
-	"os"
 	"strconv"
 	"time"
 
@@ -24,11 +23,10 @@ type sessionReponse struct {
 
 // code2Session: use weixin api to get user's openID and session key
 func code2Session(jsCode string) *sessionReponse {
-	weiSecret := os.Getenv("WEI_SECRET")
 	reqAddr := fmt.Sprintf("%s?appid=%s&secret=%s&js_code=%s&grant_type=authorization_code",
 		beego.AppConfig.String("weiLoginApi"),
 		beego.AppConfig.String("weiAppid"),
-		weiSecret,
+		beego.AppConfig.String("weiSecret"),
 		jsCode)
 	beego.Debug("User login get openID and session from: ", reqAddr)
 

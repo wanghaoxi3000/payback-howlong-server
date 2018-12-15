@@ -5,13 +5,11 @@ FROM golang:1.11
 #RUN go install -a std
 
 ENV APP_DIR=/go/src/howlong
-ENV APP_RUNMODE=prod
 
-RUN mkdir -p ${APP_DIR}
 COPY . $APP_DIR
 
-RUN go get -u github.com/golang/dep/cmd/dep
 WORKDIR ${APP_DIR}
+RUN go get -u github.com/golang/dep/cmd/dep
 RUN dep init -v
 RUN go build -ldflags '-w -s' -v
 
@@ -27,8 +25,10 @@ RUN wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/s
 ENV APP_DIR=/opt/howlong
 ENV APP_DATA_DIR=/var/howlong
 ENV APP_DB_SQLITE_PATH=${APP_DATA_DIR}/howlong.db
+ENV APP_RUNMODE=prod
 
-COPY --from=0 /go/src/howlong/howlong ${APP_DIR}/howlong
+COPY --from=0 /go/src/howlong/conf ${APP_DIR}/conf/
+COPY --from=0 /go/src/howlong/howlong ${APP_DIR}/
 RUN mkdir -p ${APP_DATA_DIR}
 
 EXPOSE 8080

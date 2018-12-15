@@ -27,7 +27,6 @@ type creditSerializer struct {
 }
 
 func (c *creditSerializer) Validate() (validInfo map[string]string, err error) {
-	// validInfo := make(map[string]string)
 	if validInfo, err = validateStruct(c); err != nil {
 		return
 	}
