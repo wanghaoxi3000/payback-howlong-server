@@ -11,9 +11,10 @@ type dateInfo struct {
 	NextPay  string // 下一还款日
 	CurPay   string // 当日消费还款日
 
-	WaitDay      int // 最长等待时间
-	IntervalBill int // 账单日间隔
-	IntervalPay  int // 还款日间隔
+	WaitDay        int // 最长等待时间
+	IntervalBill   int // 下一账账单日间隔
+	IntervalPay    int // 下一账还款日间隔
+	IntervalCurPay int // 当日消费还款日间隔
 }
 
 type creditSerializer struct {
@@ -75,6 +76,7 @@ func (c *creditSerializer) CreditDetail(nowTime time.Time) {
 		curPayDate.Format("2006-01-02"),
 		int(math.Ceil(waitDay.Hours() / 24)),
 		int(math.Ceil(billDate.Sub(nowTime).Hours() / 24)),
+		int(math.Ceil(payDate.Sub(nowTime).Hours() / 24)),
 		int(math.Ceil(curPayDate.Sub(nowTime).Hours() / 24)),
 	}
 }

@@ -72,7 +72,7 @@ func (o *CreditController) List() {
 	for k := range creditsStructs {
 		sortFlag = k + 1
 		for i := sortFlag; i < length; i++ {
-			if creditsStructs[k].DateDetail.IntervalPay < creditsStructs[i].DateDetail.IntervalPay {
+			if creditsStructs[k].DateDetail.IntervalCurPay < creditsStructs[i].DateDetail.IntervalCurPay {
 				creditsStructs[k], creditsStructs[i] = creditsStructs[i], creditsStructs[k]
 			}
 		}
